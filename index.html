@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Herbarbelege</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Header */
+    #header {
+      background: #f8f8f6;
+      border-bottom: 2px solid #2c5f2e;
+      padding: 12px 24px;
+      font-family: Georgia, serif;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      flex-shrink: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    #header-text h1 { font-size: 1.4em; color: #1a1a1a; }
+    #header-text p  { font-size: 0.85em; color: #555; margin-top: 4px; }
+
+    /* Hamburger-Button (nur mobil sichtbar) */
+    #burger-btn {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      cursor: pointer;
+      background: #2c5f2e;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 10px;
+      flex-shrink: 0;
+    }
+    #burger-btn span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: white;
+      border-radius: 2px;
+      transition: all 0.3s;
+    }
+
+    /* Hauptbereich */
+    #main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Karte links */
+    #karte-container {
+      flex: 1;
+      position: relative;
+    }
+    #karte-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* Liste rechts – Desktop */
+    #liste-container {
+      width: 320px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      border-left: 2px solid #2c5f2e;
+      background: #fff;
+      overflow: hidden;
+      transition: transform 0.3s ease;
+    }
+
+    #suche-wrapper {
+      padding: 10px 12px;
+      background: #f8f8f6;
+      border-bottom: 1px solid #ddd;
+    }
+    #suche-wrapper label {
+      font-size: 0.82em;
+      color: #444;
+      display: block;
+      margin-bottom: 5px;
+    }
+    #suchfeld {
+      width: 100%;
+      padding: 6px 10px;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      font-size: 0.88em;
+      outline: none;
+    }
+    #suchfeld:focus { border-color: #2c5f2e; }
+    #treffer-anzahl {
+      font-size: 0.78em;
+      color: #888;
+      margin-top: 5px;
+      display: block;
+    }
+
+    #tabelle-wrapper {
+      overflow-y: auto;
+      flex: 1;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85em;
+    }
+    thead th {
+      background: #2c5f2e;
+      color: white;
+      padding: 8px 10px;
+      text-align: left;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    thead th:first-child { width: 75px; }
+    tbody tr {
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    tbody tr:nth-child(even) { background: #f5f5f3; }
+    tbody tr:hover           { background: #d4e8d4; }
+    tbody tr.aktiv           { background: #2c5f2e; color: white; }
+    tbody td { padding: 6px 10px; border-bottom: 1px solid #eee; }
+    tbody td:first-child { width: 75px; }
+
+    /* Fußzeile */
+    #footer {
+      background: #f8f8f6;
+      border-top: 1px solid #ccc;
+      padding: 5px 24px;
+      font-size: 0.72em;
+      color: #666;
+      flex-shrink: 0;
+    }
+
+    /* ---- Mobil ---- */
+    @media (max-width: 700px) {
+
+      #burger-btn { display: flex; }
+
+      #header-text p { display: none; }
+      #header-text h1 { font-size: 1.1em; }
+
+      /* Liste als Overlay von rechts */
+      #liste-container {
+        position: absolute;
+        top: 0; right: 0; bottom: 0;
+        width: 85vw;
+        max-width: 340px;
+        z-index: 500;
+        border-left: 2px solid #2c5f2e;
+        box-shadow: -4px 0 16px rgba(0,0,0,0.18);
+        transform: translateX(100%);  /* versteckt */
+      }
+
+      #liste-container.offen {
+        transform: translateX(0);     /* sichtbar */
+      }
+
+      /* Abdunklung hinter der Liste */
+      #overlay {
+        display: none;
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.35);
+        z-index: 499;
+      }
+      #overlay.aktiv { display: block; }
+
+      #footer { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div id="header-text">
+    <h1>Herbarbelege</h1>
+    <p>Interaktive Übersichtskarte der Fundorte.
+       Klick auf einen Punkt öffnet Details &middot;
+       Suche rechts zoomt zur Fundstelle &middot;
+       Stand: 05/2026</p>
+  </div>
+  <button id="burger-btn" aria-label="Artenliste öffnen" onclick="toggleListe()">
+    <span></span><span></span><span></span>
+  </button>
+</div>
+
+<div id="main">
+
+  <div id="overlay" onclick="toggleListe()"></div>
+
+  <div id="karte-container">
+    <iframe id="karte-iframe" src="karte.html"></iframe>
+  </div>
+
+  <div id="liste-container">
+    <div id="suche-wrapper">
+      <label for="suchfeld">Sammelnummer oder Artname suchen:</label>
+      <input type="text" id="suchfeld" placeholder="z. B. 31 oder Ajuga …">
+      <span id="treffer-anzahl"></span>
+    </div>
+    <div id="tabelle-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Nr.</th>
+            <th>Artname</th>
+          </tr>
+        </thead>
+        <tbody id="tabelle-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div id="footer">
+  <strong>Rote-Liste-Status nach:</strong>
+  Metzing, D.; Garve, E.; Matzke-Hajek, G. et al. (2018): Rote Liste und Gesamtartenliste der
+  Farn- und Blütenpflanzen (Trachaeophyta) Deutschlands. –
+  In: Metzing, D.; Hofbauer, N.; Ludwig, G. &amp; Matzke-Hajek, G. (Red.):
+  Rote Liste gefährdeter Tiere, Pflanzen und Pilze Deutschlands. Band 7: Pflanzen. –
+  Münster (Landwirtschaftsverlag). – Naturschutz und Biologische Vielfalt 70 (7): 13–358.
+</div>
+
+<script>
+const punkte = [{"sammelnr":"1","artname":"Capsella bursa-pastoris","lon":8.7387,"lat":50.7939},{"sammelnr":"2","artname":"Lamium album","lon":8.7377,"lat":50.7949},{"sammelnr":"3","artname":"Lamium album","lon":8.7378,"lat":50.795},{"sammelnr":"4","artname":"Lamium purpureum","lon":8.739,"lat":50.7962},{"sammelnr":"5","artname":"Ranunculus bulbosus","lon":8.739,"lat":50.7963},{"sammelnr":"7","artname":"Anemone nemorosa","lon":8.7855,"lat":50.8106},{"sammelnr":"6","artname":"Alliaria petiolata","lon":8.7846,"lat":50.8107},{"sammelnr":"8","artname":"Viola reichenbachiana","lon":8.6891,"lat":50.8406},{"sammelnr":"9","artname":"Galium odoratum","lon":8.689,"lat":50.8406},{"sammelnr":"10","artname":"Stellaria holostea","lon":8.6884,"lat":50.8406},{"sammelnr":"11","artname":"Galeobdolon luteum","lon":8.6887,"lat":50.8406},{"sammelnr":"12","artname":"Anemone nemorosa","lon":8.6865,"lat":50.8403},{"sammelnr":"13","artname":"Convallaria majalis","lon":8.7866,"lat":50.8091},{"sammelnr":"14","artname":"Lamium maculatum","lon":8.7748,"lat":50.8145},{"sammelnr":"15","artname":"Acer pseudoplatanus","lon":8.7753,"lat":50.8146},{"sammelnr":"16","artname":"Acer platanoides","lon":8.7753,"lat":50.8146},{"sammelnr":"17","artname":"Silene dioica","lon":8.7754,"lat":50.8145},{"sammelnr":"18","artname":"Stellaria nemorum","lon":8.7767,"lat":50.8146},{"sammelnr":"19","artname":"Chelidonium majus","lon":8.7773,"lat":50.8134},{"sammelnr":"20","artname":"Silene dioica","lon":8.7773,"lat":50.8134},{"sammelnr":"21","artname":"Veronica chamaedrys","lon":8.7773,"lat":50.8133},{"sammelnr":"22","artname":"Glechoma hederacea","lon":8.7773,"lat":50.8131},{"sammelnr":"23","artname":"Acer campestre","lon":8.784,"lat":50.8127},{"sammelnr":"25","artname":"Sorbus aucuparia","lon":8.7856,"lat":50.8114},{"sammelnr":"26","artname":"Fagus sylvatica","lon":8.7856,"lat":50.8118},{"sammelnr":"27","artname":"Carpinus betulus","lon":8.7856,"lat":50.812},{"sammelnr":"28","artname":"Quercus petraea","lon":8.7858,"lat":50.8124},{"sammelnr":"29","artname":"Lamium argentatum","lon":8.7854,"lat":50.8163},{"sammelnr":"30","artname":"Vinca minor","lon":8.7845,"lat":50.8173},{"sammelnr":"31","artname":"Ajuga reptans","lon":8.7843,"lat":50.8173},{"sammelnr":"32","artname":"Myosotis sylvatica","lon":8.7841,"lat":50.8173},{"sammelnr":"33","artname":"Fragaria vesca","lon":8.7839,"lat":50.8173},{"sammelnr":"34","artname":"Ranunculus bulbosus","lon":8.7838,"lat":50.8173},{"sammelnr":"35","artname":"Moehringia trinervia","lon":8.7841,"lat":50.8173},{"sammelnr":"36","artname":"Quercus rubra","lon":8.7836,"lat":50.8162},{"sammelnr":"37","artname":"Betula pendula","lon":8.7836,"lat":50.8153},{"sammelnr":"38","artname":"Cytisus scoparius","lon":8.7836,"lat":50.8151},{"sammelnr":"39","artname":"Vicia sepium","lon":8.784,"lat":50.8138},{"sammelnr":"40","artname":"Cerastium fontanum agg.","lon":8.784,"lat":50.8138},{"sammelnr":"24","artname":"Cardamine pratensis","lon":8.7751,"lat":50.8145},{"sammelnr":"41","artname":"Aesculus hippocastanum","lon":8.7842,"lat":50.8118}];
+
+const tbody    = document.getElementById("tabelle-body");
+const suchfeld = document.getElementById("suchfeld");
+const anzahl   = document.getElementById("treffer-anzahl");
+let aktiveZeile = null;
+
+// Hamburger-Logik
+function toggleListe() {
+  const liste   = document.getElementById("liste-container");
+  const overlay = document.getElementById("overlay");
+  liste.classList.toggle("offen");
+  overlay.classList.toggle("aktiv");
+}
+
+// Klick in Liste → Karte zoomen + Liste auf Mobil schließen
+function zoomZuPunkt(p) {
+  document.getElementById("karte-iframe").contentWindow.postMessage({
+    typ: "zoomZuPunkt",
+    lat: p.lat,
+    lon: p.lon,
+    zoom: 17    
+  }, "*");
+  // auf Mobil Liste automatisch schließen
+  if (window.innerWidth <= 700) {
+    const liste   = document.getElementById("liste-container");
+    const overlay = document.getElementById("overlay");
+    liste.classList.remove("offen");
+    overlay.classList.remove("aktiv");
+  }
+}
+
+function zeigeTabelle(gefiltert) {
+  tbody.innerHTML = "";
+  anzahl.textContent = gefiltert.length + " Einträge";
+  gefiltert.forEach(function(p) {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      "<td>" + p.sammelnr + "</td>" +
+      "<td><em>" + (p.artname || "–") + "</em></td>";
+    tr.addEventListener("click", function() {
+      if (aktiveZeile) aktiveZeile.classList.remove("aktiv");
+      tr.classList.add("aktiv");
+      aktiveZeile = tr;
+      zoomZuPunkt(p);
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+suchfeld.addEventListener("input", function() {
+  const q = this.value.toLowerCase();
+  const gefiltert = punkte.filter(function(p) {
+    return p.sammelnr.toLowerCase().includes(q) ||
+           (p.artname && p.artname.toLowerCase().includes(q));
+  });
+  zeigeTabelle(gefiltert);
+});
+
+zeigeTabelle(punkte);
+</script>
+
+</body>
+</html>
